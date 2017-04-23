@@ -1,0 +1,116 @@
+---
+title: "Human Activity Recognition"
+author: "Csaba Faragó"
+date: '2017.04.23.'
+output: html_document
+---
+
+# Overview
+
+This is the solution of the assignment of Practical Machine Learning Courcera course. The assignment is described here: https://www.coursera.org/learn/practical-machine-learning/supplement/PvInj/course-project-instructions-read-first.
+
+In a nuthsell: human activity recognicion device measures a great number of parameterers when doing one of the following exercises: sitting-down, standing-up, standing, walking, and sitting. The task is to make predictive models from the input data 
+
+
+# Obtaining data
+
+First we download the data manually. Then we read in and clean them.
+
+
+## Reading data
+It is assumed that the data related to the task is found in the current directory. First we read them which comprises of a training and a testig data.
+
+```{r read}
+pml.training <- read.csv("pml-training.csv", na.strings = c("NA", "", "NULL", "#DIV/0!"))
+pml.testing <- read.csv("pml-testing.csv", na.strings = c("NA", "", "NULL", "#DIV/0!"))
+dim(pml.training)
+dim(pml.testing)
+table(pml.training$classe)
+```
+
+
+## Cleaning data
+
+As we see the number of dimensions of the data is `r dim(pml.training)[2]`. Many of the cointins NA data, furhtermore, some columns contain ordinal number, name or date related data which cannot be used for prediction. First we remove the not necessary columns.
+
+```{r clean}
+columnsWithoutNA <- colSums(is.na(pml.training)) == 0
+pml.training <- pml.training[, columnsWithoutNA]
+names(pml.training)
+pml.training <- pml.training[, -c(1:7)]
+pml.testing <- pml.testing[, columnsWithoutNA]
+pml.testing <- pml.testing[, -c(1:7, 60)]
+```
+
+
+# Creating prediction models
+
+Now we build some prediction models. First we divide the training data into train and validation subparts.
+
+```{r model}
+library(caret)
+set.seed(197777)
+inTrain <- createDataPartition(pml.training$classe, p=0.75, list=FALSE)
+pml.train <- pml.training[inTrain,]
+pml.validation <- pml.training[-inTrain,]
+```
+
+We predict a non-numeric factor variable. For this we use 3 models for the prediction: random forest, decision tree and boosing.
+
+
+## Random forest
+
+We perform random forest prediction directly with randomForest function, beacuse the train is too slow.
+
+```{r rf}
+library(randomForest)
+model.randomForest <- randomForest(classe ~ ., data = pml.train, importance = TRUE, ntree = 50)
+predict.randomForest <- predict(model.randomForest, pml.validation)
+confusionMatrix(predict.randomForest, pml.validation$classe)
+```
+
+As we can see, the overall accuracy of this prediction model is `r sum(predict.randomForest == pml.validation$classe) / length(pml.validation$classe)`, whcih is quite high.
+
+
+## Decision tree
+
+We also perform the decision tree analysis using the rpart function, also due to speed reasons.
+
+```{r rpart}
+library(rpart)
+model.decisionTree <- rpart(classe ~ ., data = pml.train, method = "class")
+predict.decisionTree <- predict(model.decisionTree, pml.validation, type="class")
+confusionMatrix(predict.decisionTree, pml.validation$classe)
+```
+
+The overall accuracy of this model is not so good: `r sum(predict.decisionTree == pml.validation$classe) / length(pml.validation$classe)`.
+
+The resulting decision tree looks like this:
+
+```{r rpartplot}
+library(rattle)
+fancyRpartPlot(model.decisionTree)
+```
+
+
+## Boosing
+
+Finally let us check how boosing works:
+
+```{r gbm}
+library(gbm)
+model.boost <- train(classe ~ ., data = pml.train, method = "gbm", trControl = trainControl(method = "repeatedcv", number = 5, repeats = 1), verbose=FALSE)
+predict.boost <- predict(model.boost, pml.validation)
+confusionMatrix(predict.boost, pml.validation$classe)
+```
+
+Between the above two models: `r sum(predict.boost == pml.validation$classe) / length(pml.validation$classe)`.
+
+
+# Prediction test data
+
+As we have the best prediction accuracy with random forest model, we use to predict it the testing data:
+
+```{r predict}
+predict(model.randomForest, pml.testing)
+```

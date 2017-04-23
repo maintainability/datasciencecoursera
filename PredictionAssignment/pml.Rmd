@@ -1,8 +1,10 @@
 ---
 title: "Human Activity Recognition"
-author: "Csaba Faragó"
-date: '2017.04.23.'
-output: html_document
+author: "Csaba Farago"
+date: "2017.04.23."
+output:
+  pdf_document: default
+  html_document: default
 ---
 
 # Overview

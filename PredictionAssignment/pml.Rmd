@@ -93,9 +93,9 @@ fancyRpartPlot(model.decisionTree)
 ```
 
 
-## Boosing
+## Boosting
 
-Finally let us check how boosing works:
+Finally let us check how boosting works:
 
 ```{r gbm}
 library(gbm)
